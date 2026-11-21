@@ -80,7 +80,8 @@ function stat(number, label) {
 }
 $('snapshot').textContent = `${meta.checkedDate} 조회 · ¥100 ≈ ${asWon(meta.fx.krwPerYen * 100)} · 온라인 상품가`;
 $('stats').innerHTML = [stat(wines.length, '수집한 와인·세트'), stat(meta.exact, '에이와인 동일 조건'), stat(meta.reference, '에이와인 참고가')].join('');
-$('basis').innerHTML = `공식몰 전체 표시 ${format.format(meta.catalogTotal ?? 0)}개 · 확인한 고유 상품 ${format.format(meta.listingCount)}개 · 상품 상세 ${format.format(meta.detailsCount)}개${meta.memberOnly ? ` · 상세 회원 전용 ${format.format(meta.memberOnly)}개` : ''}${meta.detailsUnavailable ? ` · 상세 미확인 ${format.format(meta.detailsUnavailable)}개` : ''} · 에이와인 상세 ${format.format(meta.awinePages)}개. 미확인 가격이나 상품 정보는 갱신 시 반영됩니다. 환율 ${escapeHTML(meta.fx.date)} 기준. <a href="${escapeHTML(meta.fx.url)}" target="_blank" rel="noopener">환율 출처 ↗</a>`;
+const awineUpdate = meta.awineRecheck ? ` 에이와인 재조회 ${escapeHTML(meta.awineRecheck.date)} · ${format.format(meta.awineRecheck.added)}건 추가.` : '';
+$('basis').innerHTML = `공식몰 전체 표시 ${format.format(meta.catalogTotal ?? 0)}개 · 확인한 고유 상품 ${format.format(meta.listingCount)}개 · 상품 상세 ${format.format(meta.detailsCount)}개${meta.memberOnly ? ` · 상세 회원 전용 ${format.format(meta.memberOnly)}개` : ''}${meta.detailsUnavailable ? ` · 상세 미확인 ${format.format(meta.detailsUnavailable)}개` : ''} · 에이와인 상세 ${format.format(meta.awinePages)}개.${awineUpdate} 환율 ${escapeHTML(meta.fx.date)} 기준. <a href="${escapeHTML(meta.fx.url)}" target="_blank" rel="noopener">환율 출처 ↗</a>`;
 options('country', unique(wines.map(wine => wine.country)).sort(collator.compare).map(country => [country, country]));
 options('region', unique(wines.map(wine => wine.region)).sort(collator.compare).map(region => [region, region]));
 options('vintage', unique(wines.map(wine => wine.vintage)).sort((a, b) => b.localeCompare(a)).map(vintage => [vintage, vintage]));
@@ -132,7 +133,11 @@ function card(wine) {
   const details = [labels[wine.type], wine.pack ? `${wine.pack}병` : '', wine.country, wine.region, wine.vintage, wine.volume ? `${wine.volume}mL` : '', ['out','member'].includes(wine.onlineStock) ? stockText[wine.onlineStock] : ''].filter(Boolean);
   const won = wine.yen == null ? '—' : asWon(wine.yen * meta.fx.krwPerYen);
   const pct = percentage(wine) ?? estimatedPercentage(wine);
-  const hint = pct != null ? `<small class="${pct >= 0 ? 'saving' : 'premium'}">${wine.awine.estimated ? '참고 ' : ''}${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? '저렴' : '높음'}</small>` : wine.awine ? '<small>참고가</small>' : '';
+  const reference = wine.awine?.stock === 'out' ? '품절 참고가'
+    : wine.awine?.vintage && wine.vintage && wine.awine.vintage !== wine.vintage ? `${wine.awine.vintage} 참고가`
+    : wine.awine?.notes.includes('빈티지 미표기') ? '빈티지 미표기 참고가'
+    : '참고가';
+  const hint = pct != null ? `<small class="${pct >= 0 ? 'saving' : 'premium'}">${wine.awine.estimated ? '참고 ' : ''}${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? '저렴' : '높음'}</small>` : wine.awine ? `<small>${escapeHTML(reference)}</small>` : '';
   return `<article class="wine"><div><h3>${escapeHTML(main)}</h3>${subtitle}<p class="meta">${details.map(value => `<span>${escapeHTML(value)}</span>`).join('')}</p></div>
     <dl class="prices"><div><dt>타카무라 온라인가</dt><dd>${asYen(wine.yen)}<small>${won}</small></dd></div>
     <div><dt>에이와인</dt><dd>${asWon(wine.awine?.price)}${hint}</dd></div></dl>

@@ -141,9 +141,12 @@ def parse_awine(url):
     pack = re.search(r'(?:^|\D)([2-9]|[1-9]\d)\s*(?:병\s*(?:세트|묶음)|본\s*세트)', label, re.I)
     capacity = next((value for key, value in fields.items() if key and re.search(r'용량|capacity|volume', key, re.I)), '')
     year = re.search(r'(?<!\d)(?:18|19|20)\d{2}(?!\d)', label)
-    vintage = year[0] if year else ('NV' if re.search(r'\bNV\b|논빈티지', label, re.I) else None)
+    vintage = year[0] if year else ('NV' if re.search(r'\bN[.\s-]*V\b|논\s*빈티지', label, re.I) else None)
+    brand = schema.get('brand') or {}
     return {'url': url, 'name': jp, 'en': en, 'price': price, 'stock': stock, 'vintage': vintage,
-            'volume': volume(label) or volume(capacity), 'pack': bool(pack), 'date': NOW}
+            'volume': volume(label) or volume(capacity), 'pack': bool(pack), 'date': NOW,
+            'brand': brand.get('name', '') if isinstance(brand, dict) else str(brand),
+            'wineType': fields.get('와인타입', ''), 'area': fields.get('생산지역', '')}
 
 
 def run_batch(keys, task, workers, path, label, limit=None):
