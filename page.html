@@ -16,7 +16,7 @@
 </div></header>
 <main id="top" class="wrap">
   <section class="intro" aria-labelledby="title">
-    <div><p class="kicker">오사카 에도보리</p><h1 id="title">타카무라 와인<br>가격 비교</h1><p class="intro-copy">타카무라 플러스 온라인가와 에이와인 가격을 보고, 방문할 때 찾을 와인을 골라두세요.</p></div>
+    <div><p class="kicker">오사카 에도보리</p><h1 id="title">타카무라 와인<br>가격 비교</h1><p class="intro-copy">타카무라 온라인 가격을 한국 구매가와 비교하고, 방문할 때 찾을 와인을 골라두세요.</p></div>
     <section class="visit" id="visit" aria-labelledby="visit-title">
       <p class="kicker">현장 구매</p><h2 id="visit-title">타카무라 오사카 본점</h2>
       <p>오사카시 니시구 에도보리 2-2-18<br>11:00–19:30 · 수요일 휴무</p>
@@ -31,7 +31,7 @@
       <div class="control-main">
         <label class="search-label">와인명 또는 생산자<input type="search" id="search" placeholder="예: Krug, コシュ デュリ, 보르도"></label>
         <label class="sort-label">정렬<select id="sort">
-          <option value="catalog">공식몰 목록순</option><option value="pct">절약률 큰 순</option><option value="savings">절약액 큰 순</option><option value="estimated">절약률 큰 순 (750mL 가정 포함)</option><option value="yen-asc">타카무라 가격 낮은 순</option><option value="yen-desc">타카무라 가격 높은 순</option><option value="awine-asc">에이와인 가격 낮은 순</option><option value="oldest">오래된 빈티지 순</option>
+          <option value="catalog">공식몰 목록순</option><option value="kr-pct">한국 구매가 대비 절약률 큰 순</option><option value="kr-savings">한국 구매가 대비 절약액 큰 순</option><option value="yen-asc">타카무라 가격 낮은 순</option><option value="yen-desc">타카무라 가격 높은 순</option><option value="pct">에이와인 대비 절약률 큰 순</option><option value="savings">에이와인 대비 절약액 큰 순</option><option value="estimated">에이와인 대비 절약률 (750mL 가정 포함)</option><option value="awine-asc">에이와인 가격 낮은 순</option><option value="oldest">오래된 빈티지 순</option>
         </select></label>
       </div>
       <div class="types" id="types" aria-label="와인 종류"></div>
@@ -40,6 +40,7 @@
         <label>산지<select id="region"><option value="">전체</option></select></label>
         <label>빈티지<select id="vintage"><option value="">전체</option><option value="old">2009년 이전</option></select></label>
         <label>용량<select id="volume"><option value="">전체</option></select></label>
+        <label>한국 가격<select id="korea"><option value="">전체</option><option value="available">구매가 확인</option><option value="reference">참고가만 확인</option><option value="unmatched">가격 미확인</option></select></label>
         <label>에이와인 비교<select id="comparison"><option value="">전체</option><option value="exact">동일 조건</option><option value="reference">참고 가격</option><option value="unmatched">가격 미확인</option></select></label>
         <label>타카무라 온라인 재고<select id="stock"><option value="">전체</option><option value="available">온라인 주문 가능</option><option value="out">온라인 품절</option><option value="member">상품 상세 회원 전용</option><option value="unknown">미확인</option></select></label>
         <label>최저가 (엔)<input type="number" id="min" min="0" step="1" inputmode="numeric" placeholder="0"></label>
@@ -51,7 +52,7 @@
     <p id="empty" hidden>조건에 맞는 와인이 없습니다.</p><div id="results" class="results"></div>
     <button type="button" id="more" class="secondary" hidden>더 보기</button>
   </section>
-  <footer class="footer"><p id="basis"></p><p>온라인 판매가는 일본 소비세 포함 상품가입니다. 원화 환산에 카드·환전 수수료, 한국 반입 비용, 포인트·쿠폰 혜택은 포함하지 않았습니다.</p><p><a href="https://takamuraplus.jp/shopbrand/all_items/" target="_blank" rel="noopener">타카무라 플러스 상품 목록 ↗</a> · <a href="https://awine.kr/" target="_blank" rel="noopener">에이와인 ↗</a></p></footer>
+  <footer class="footer"><p id="basis"></p><p>한국 구매가 정렬에는 동일 와인·빈티지·용량으로 구매 가능한 판매가를 사용합니다. 해외직구는 세금과 배송비를 확인한 총액을 사용합니다. 타카무라 원화 환산에는 카드·환전 수수료와 한국 반입 비용을 포함하지 않습니다.</p><p><a href="https://takamuraplus.jp/shopbrand/all_items/" target="_blank" rel="noopener">타카무라 플러스 상품 목록 ↗</a> · <a href="https://awine.kr/" target="_blank" rel="noopener">에이와인 ↗</a></p></footer>
 </main>
 <dialog id="wine-dialog" aria-labelledby="detail-title">
   <section id="detail-content"></section>

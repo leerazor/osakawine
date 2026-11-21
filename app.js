@@ -6,7 +6,8 @@ const stockText = { available:'온라인 주문 가능', out:'온라인 품절',
 const allIds = new Map(wines.map(wine => [wine.id, wine]));
 const format = new Intl.NumberFormat('ko-KR');
 const collator = new Intl.Collator('ko');
-const fieldNames = ['search', 'country', 'region', 'vintage', 'volume', 'comparison', 'stock', 'min', 'max'];
+const fieldNames = ['search', 'country', 'region', 'vintage', 'volume', 'korea', 'comparison', 'stock', 'min', 'max'];
+const koreanStores = {dailyshot:['데일리샷', 'dailyshot.co'], gooddeal:['굿딜와인', 'gooddealwine.store'], kihya:['키햐', 'm.kihya.com'], awine:['에이와인', 'awine.kr']};
 const $ = id => document.getElementById(id);
 const filters = Object.fromEntries(fieldNames.map(name => [name, $(name)]));
 const pageSize = 40;
@@ -37,13 +38,24 @@ function loadSaved() {
 }
 const saved = loadSaved();
 const searchKeys = new Map(wines.map(wine => [wine.id, norm([
-  wine.jp, wine.en, wine.awine?.name, wine.producer, wine.country, wine.region, wine.area, wine.vintage, labels[wine.type], wine.id
+  wine.jp, wine.en, wine.awine?.name, wine.korea?.purchase?.name, wine.korea?.reference?.name,
+  wine.producer, wine.country, wine.region, wine.area, wine.vintage, labels[wine.type], wine.id
 ].filter(Boolean).join(' '))]));
 const asYen = yen => yen == null ? '—' : `¥${format.format(yen)}`;
 const asWon = won => won == null ? '—' : `${format.format(Math.round(won))}원`;
 const delta = wine => wine.awine?.status === 'exact' && wine.yen != null ? wine.awine.price - Math.round(wine.yen * meta.fx.krwPerYen) : null;
 const estimatedPercentage = wine => wine.awine?.estimated && wine.yen != null ? 100 * (wine.awine.price - Math.round(wine.yen * meta.fx.krwPerYen)) / wine.awine.price : null;
 const percentage = wine => delta(wine) == null ? null : 100 * delta(wine) / wine.awine.price;
+function koreaPurchase(wine) {
+  return wine.korea?.purchase ?? (wine.awine?.status === 'exact' && wine.awine.stock === 'available' ? {...wine.awine, store:'awine'} : null);
+}
+const koreaReference = wine => wine.korea?.reference ?? (wine.awine && !koreaPurchase(wine) ? {...wine.awine, store:'awine'} : null);
+const koreaDelta = wine => {
+  const price = koreaPurchase(wine)?.price;
+  return price && wine.yen != null ? price - Math.round(wine.yen * meta.fx.krwPerYen) : null;
+};
+const koreaPercentage = wine => koreaDelta(wine) == null ? null : 100 * koreaDelta(wine) / koreaPurchase(wine).price;
+const koreaStatus = wine => koreaPurchase(wine) ? 'available' : koreaReference(wine) ? 'reference' : 'unmatched';
 const options = (id, values) => values.forEach(([value, title]) => $(id).add(new Option(title, value)));
 const unique = values => [...new Set(values.filter(Boolean))];
 const numericYear = wine => /^\d{4}$/.test(wine.vintage || '') ? Number(wine.vintage) : null;
@@ -79,9 +91,10 @@ function stat(number, label) {
   return `<div class="stat"><span>${label}</span><strong>${format.format(number)}</strong></div>`;
 }
 $('snapshot').textContent = `${meta.checkedDate} 조회 · ¥100 ≈ ${asWon(meta.fx.krwPerYen * 100)} · 온라인 상품가`;
-$('stats').innerHTML = [stat(wines.length, '수집한 와인·세트'), stat(meta.exact, '에이와인 동일 조건'), stat(meta.reference, '에이와인 참고가')].join('');
+$('stats').innerHTML = [stat(wines.length, '수집한 와인·세트'), stat(wines.filter(wine => koreaStatus(wine) === 'available').length, '한국 구매가 확인'), stat(wines.filter(wine => koreaStatus(wine) === 'reference').length, '한국 참고가만 확인')].join('');
 const awineUpdate = meta.awineRecheck ? ` 에이와인 재조회 ${escapeHTML(meta.awineRecheck.date)} · ${format.format(meta.awineRecheck.added)}건 추가.` : '';
-$('basis').innerHTML = `공식몰 전체 표시 ${format.format(meta.catalogTotal ?? 0)}개 · 확인한 고유 상품 ${format.format(meta.listingCount)}개 · 상품 상세 ${format.format(meta.detailsCount)}개${meta.memberOnly ? ` · 상세 회원 전용 ${format.format(meta.memberOnly)}개` : ''}${meta.detailsUnavailable ? ` · 상세 미확인 ${format.format(meta.detailsUnavailable)}개` : ''} · 에이와인 상세 ${format.format(meta.awinePages)}개.${awineUpdate} 환율 ${escapeHTML(meta.fx.date)} 기준. <a href="${escapeHTML(meta.fx.url)}" target="_blank" rel="noopener">환율 출처 ↗</a>`;
+const koreaUpdate = meta.korea ? ` 한국 판매처 ${escapeHTML(meta.korea.date)} 대조 · 에이와인 가격이 없던 ${format.format(meta.korea.targets)}개 대상.` : '';
+$('basis').innerHTML = `공식몰 전체 표시 ${format.format(meta.catalogTotal ?? 0)}개 · 확인한 고유 상품 ${format.format(meta.listingCount)}개 · 상품 상세 ${format.format(meta.detailsCount)}개${meta.memberOnly ? ` · 상세 회원 전용 ${format.format(meta.memberOnly)}개` : ''}${meta.detailsUnavailable ? ` · 상세 미확인 ${format.format(meta.detailsUnavailable)}개` : ''} · 에이와인 상세 ${format.format(meta.awinePages)}개.${awineUpdate}${koreaUpdate} 환율 ${escapeHTML(meta.fx.date)} 기준. <a href="${escapeHTML(meta.fx.url)}" target="_blank" rel="noopener">환율 출처 ↗</a>`;
 options('country', unique(wines.map(wine => wine.country)).sort(collator.compare).map(country => [country, country]));
 options('region', unique(wines.map(wine => wine.region)).sort(collator.compare).map(region => [region, region]));
 options('vintage', unique(wines.map(wine => wine.vintage)).sort((a, b) => b.localeCompare(a)).map(vintage => [vintage, vintage]));
@@ -104,6 +117,7 @@ function numericOrder(read, direction = 1) {
   };
 }
 const sorts = { pct:numericOrder(percentage, -1), estimated:numericOrder(wine => percentage(wine) ?? estimatedPercentage(wine), -1), savings:numericOrder(delta, -1),
+  'kr-pct':numericOrder(koreaPercentage, -1), 'kr-savings':numericOrder(koreaDelta, -1),
   'yen-asc':numericOrder(wine => wine.yen), 'yen-desc':numericOrder(wine => wine.yen, -1),
   'awine-asc':numericOrder(wine => wine.awine?.price), oldest:numericOrder(numericYear) };
 function applyFilters() {
@@ -116,6 +130,7 @@ function applyFilters() {
     (!current.region || wine.region === current.region) &&
     (!current.vintage || (current.vintage === 'old' ? numericYear(wine) != null && numericYear(wine) < 2010 : wine.vintage === current.vintage)) &&
     (!current.volume || wine.volume === Number(current.volume)) &&
+    (!current.korea || koreaStatus(wine) === current.korea) &&
     (!current.comparison || (wine.awine?.status || 'unmatched') === current.comparison) &&
     (!current.stock || (wine.onlineStock || 'unknown') === current.stock) &&
     (!current.min || (wine.yen != null && wine.yen >= Number(current.min))) &&
@@ -128,19 +143,23 @@ function applyFilters() {
   render();
 }
 function card(wine) {
-  const main = wine.awine?.name || wine.en || wine.jp;
+  const purchase = koreaPurchase(wine);
+  const korean = purchase ?? koreaReference(wine);
+  const main = purchase?.name || (korean?.vintage === wine.vintage ? korean?.name : '') || wine.en || wine.jp;
   const subtitle = wine.jp !== main ? `<p class="jp" lang="ja">${escapeHTML(wine.jp)}</p>` : '';
   const details = [labels[wine.type], wine.pack ? `${wine.pack}병` : '', wine.country, wine.region, wine.vintage, wine.volume ? `${wine.volume}mL` : '', ['out','member'].includes(wine.onlineStock) ? stockText[wine.onlineStock] : ''].filter(Boolean);
   const won = wine.yen == null ? '—' : asWon(wine.yen * meta.fx.krwPerYen);
-  const pct = percentage(wine) ?? estimatedPercentage(wine);
-  const reference = wine.awine?.stock === 'out' ? '품절 참고가'
-    : wine.awine?.vintage && wine.vintage && wine.awine.vintage !== wine.vintage ? `${wine.awine.vintage} 참고가`
-    : wine.awine?.notes.includes('빈티지 미표기') ? '빈티지 미표기 참고가'
-    : '참고가';
-  const hint = pct != null ? `<small class="${pct >= 0 ? 'saving' : 'premium'}">${wine.awine.estimated ? '참고 ' : ''}${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? '저렴' : '높음'}</small>` : wine.awine ? `<small>${escapeHTML(reference)}</small>` : '';
+  const pct = koreaPercentage(wine);
+  const store = koreanStores[korean?.store]?.[0];
+  const reference = korean?.stock === 'out' ? '품절 참고가'
+    : korean?.stock === 'request' ? '재고 미확정 참고가'
+    : korean?.vintage && wine.vintage && korean.vintage !== wine.vintage ? `${korean.vintage} 참고가`
+    : korean?.notes?.includes('빈티지 미표기') ? '빈티지 미표기 참고가' : '참고가';
+  const hint = pct != null ? `<small class="${pct >= 0 ? 'saving' : 'premium'}">${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? '저렴' : '높음'}</small>`
+    : korean ? `<small>${escapeHTML(reference)}</small>` : '';
   return `<article class="wine"><div><h3>${escapeHTML(main)}</h3>${subtitle}<p class="meta">${details.map(value => `<span>${escapeHTML(value)}</span>`).join('')}</p></div>
     <dl class="prices"><div><dt>타카무라 온라인가</dt><dd>${asYen(wine.yen)}<small>${won}</small></dd></div>
-    <div><dt>에이와인</dt><dd>${asWon(wine.awine?.price)}${hint}</dd></div></dl>
+    <div><dt>${purchase ? '한국 구매가' : '한국 참고가'}${store ? ` · ${escapeHTML(store)}` : ''}</dt><dd>${asWon(korean?.price)}${hint}</dd></div></dl>
     <div class="wine-actions"><button class="secondary" type="button" data-detail="${wine.id}">상세</button><button class="secondary" type="button" data-save="${wine.id}" aria-pressed="${saved.has(wine.id)}">${saved.has(wine.id) ? '찜 해제' : '찜'}</button></div></article>`;
 }
 function render() {
@@ -149,6 +168,33 @@ function render() {
   $('results').innerHTML = filtered.slice(0, visible).map(card).join('');
   $('more').hidden = shown >= filtered.length;
   $('empty').hidden = filtered.length > 0;
+}
+function koreanDetails(wine) {
+  const purchase = koreaPurchase(wine);
+  const offer = purchase ?? koreaReference(wine);
+  if (!offer || offer.store === 'awine') return '';
+  const diff = koreaDelta(wine);
+  const saving = diff == null ? '' : `<p>한국 구매가 대비 ${asWon(Math.abs(diff))} ${diff >= 0 ? '저렴' : '높음'}</p>`;
+  if (offer.components) {
+    const items = offer.components.map(part => {
+      const [seller, host] = koreanStores[part.store];
+      const url = itemLink(part.url, host);
+      const name = `${escapeHTML(part.name)} · ${escapeHTML(seller)}`;
+      return `<li>${url ? `<a target="_blank" rel="noopener" href="${url}">${name} ↗</a>` : name} · ${asWon(part.price)} × ${part.count}병</li>`;
+    });
+    return `<h3>한국 구매가</h3><p>${asWon(offer.price)} · 동일 구성품 합계 · ${escapeHTML(offer.date)}</p><ul>${items.join('')}</ul>${saving}`;
+  }
+  const [seller, host] = koreanStores[offer.store] ?? [];
+  const url = itemLink(offer.url, host);
+  const alternative = purchase ? koreaReference(wine) : null;
+  const [alternativeSeller, alternativeHost] = koreanStores[alternative?.store] ?? [];
+  const alternativeURL = itemLink(alternative?.url, alternativeHost);
+  const conditional = alternative?.stock === 'request' ? `<p>재고 미확정 참고가 · ${asWon(alternative.price)}${alternativeURL ? ` · <a target="_blank" rel="noopener" href="${alternativeURL}">${escapeHTML(alternativeSeller)} ↗</a>` : ''}</p>` : '';
+  const conditions = [offer.vintage || '빈티지 미표기', offer.volume ? `${offer.volume}mL` : '용량 미표기', offer.method, offer.date]
+    .filter(Boolean).map(escapeHTML).join(' · ');
+  return `<h3>${purchase ? '한국 구매가' : '한국 참고가'}</h3><p>${asWon(offer.price)} · ${escapeHTML(seller)} · ${conditions}</p>
+    ${saving}${offer.notes?.length ? `<p>${offer.notes.map(escapeHTML).join(' · ')}</p>` : ''}
+    ${url ? `<p><a target="_blank" rel="noopener" href="${url}">${escapeHTML(seller)} 상품 ↗</a></p>` : ''}${conditional}`;
 }
 function openDetails(wine) {
   activeId = wine.id;
@@ -166,12 +212,16 @@ function openDetails(wine) {
   } else if (match) {
     matchInfo = `<p>${asWon(match.price)} · ${escapeHTML(match.vintage || '빈티지 미표기')} · ${match.volume ? `${match.volume}mL` : '용량 미표기'} · ${escapeHTML(match.date)} 조회</p>`;
   }
-  const heading = match?.name || wine.en || wine.jp;
+  const purchase = koreaPurchase(wine);
+  const reference = koreaReference(wine);
+  const heading = purchase?.name || (reference?.vintage === wine.vintage ? reference?.name : '') || wine.en || wine.jp;
   const japanese = heading !== wine.jp ? `<p lang="ja">${escapeHTML(wine.jp)}</p>` : '';
   $('detail-content').innerHTML = `<h2 id="detail-title">${escapeHTML(heading)}</h2>${japanese}
     <p class="muted">${[wine.id, wine.producer, wine.area, wine.vintage, wine.volume ? `${wine.volume}mL` : ''].filter(Boolean).map(escapeHTML).join(' · ')}</p>
     <h3>타카무라 플러스</h3><p>${asYen(wine.yen)} · ${asWon(wine.yen == null ? null : wine.yen * meta.fx.krwPerYen)} · ${stockText[wine.onlineStock] || '온라인 재고 미확인'}</p>
     <p>에도보리 매장 재고와 판매가 확인 필요${product ? ` · <a target="_blank" rel="noopener" href="${product}">공식몰 상품 ↗</a>` : ''}</p>
+    ${koreanDetails(wine)}
+    ${!koreaPurchase(wine) && !koreaReference(wine) ? '<h3>한국 가격</h3><p>조회한 판매처에서 비교할 상품 가격을 확인하지 못했습니다.</p>' : ''}
     <h3>에이와인</h3>${matchInfo}${match?.notes.length ? `<p>참고가 · ${match.notes.map(escapeHTML).join(' · ')}</p>` : ''}
     ${match?.status === 'exact' && delta(wine) != null ? `<p>에이와인 대비 ${asWon(Math.abs(delta(wine)))} ${delta(wine) >= 0 ? '저렴' : '높음'}</p>` : ''}
     ${awine ? `<p><a target="_blank" rel="noopener" href="${awine}">에이와인 상품 ↗</a></p>` : ''}
