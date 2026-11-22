@@ -23,6 +23,21 @@ function escapeHTML(value) {
 function norm(value) {
   return String(value ?? '').normalize('NFKD').toLowerCase().replace(/\p{Diacritic}/gu, '').replace(/[^\p{L}\p{N}]/gu, '');
 }
+const spellingAliases = new Map();
+const phraseAliases = new Map();
+for (const [preferred, ...alternates] of meta.wineNames?.spellings ?? []) {
+  for (const spelling of [preferred, ...alternates]) {
+    spellingAliases.set(norm(spelling), norm(preferred));
+    const phrase = spelling.split(/\s+/).map(norm).join(' ');
+    if (phrase.includes(' ')) phraseAliases.set(phrase, norm(preferred));
+  }
+}
+const spellingPattern = spellingAliases.size ? new RegExp([...spellingAliases.keys()].sort((a, b) => b.length - a.length).join('|'), 'gu') : null;
+const phrasePattern = phraseAliases.size ? new RegExp('(?<!\\S)(?:' + [...phraseAliases.keys()].sort((a, b) => b.length - a.length).join('|') + ')(?!\\S)', 'gu') : null;
+function searchName(value) {
+  const key = norm(value);
+  return spellingPattern ? key.replace(spellingPattern, spelling => spellingAliases.get(spelling)) : key;
+}
 function itemLink(url, host) {
   if (!url) return '';
   try {
@@ -37,10 +52,11 @@ function loadSaved() {
   } catch { return new Set(); }
 }
 const saved = loadSaved();
-const searchKeys = new Map(wines.map(wine => [wine.id, norm([
-  wine.jp, wine.en, wine.awine?.name, wine.korea?.purchase?.name, wine.korea?.reference?.name,
+const searchKeys = new Map(wines.map(wine => [wine.id, [
+  wine.koName, ...(wine.koAliases ?? []), wine.jp, wine.enName, wine.en,
+  wine.awine?.name, wine.korea?.purchase?.name, wine.korea?.reference?.name,
   wine.producer, wine.country, wine.region, wine.area, wine.vintage, labels[wine.type], wine.id
-].filter(Boolean).join(' '))]));
+].filter(Boolean).map(searchName)]));
 const asYen = yen => yen == null ? '—' : `¥${format.format(yen)}`;
 const asWon = won => won == null ? '—' : `${format.format(Math.round(won))}원`;
 const delta = wine => wine.awine?.status === 'exact' && wine.yen != null ? wine.awine.price - Math.round(wine.yen * meta.fx.krwPerYen) : null;
@@ -122,7 +138,9 @@ const sorts = { pct:numericOrder(percentage, -1), estimated:numericOrder(wine =>
   'awine-asc':numericOrder(wine => wine.awine?.price), oldest:numericOrder(numericYear) };
 function applyFilters() {
   const current = Object.fromEntries(Object.entries(filters).map(([name, el]) => [name, el.value]));
-  const terms = current.search.split(/\s+/).map(norm).filter(Boolean);
+  const query = current.search.split(/\s+/).map(norm).filter(Boolean).join(' ');
+  const matchedPhrases = phrasePattern ? query.replace(phrasePattern, phrase => phraseAliases.get(phrase)) : query;
+  const terms = matchedPhrases.split(' ').filter(Boolean).map(searchName);
   filtered = wines.filter(wine =>
     (!kind || wine.type === kind) &&
     (!$('saved-only').checked || saved.has(wine.id)) &&
@@ -135,18 +153,22 @@ function applyFilters() {
     (!current.stock || (wine.onlineStock || 'unknown') === current.stock) &&
     (!current.min || (wine.yen != null && wine.yen >= Number(current.min))) &&
     (!current.max || (wine.yen != null && wine.yen <= Number(current.max))) &&
-    terms.every(term => searchKeys.get(wine.id).includes(term))
+    terms.every(term => searchKeys.get(wine.id).some(name => name.includes(term)))
   );
   const sort = sorts[$('sort').value];
   if (sort) filtered.sort(sort);
   visible = pageSize;
   render();
 }
+function originalNames(wine) {
+  const japanese = `<p lang="ja">${escapeHTML(wine.jp)}</p>`;
+  const english = wine.enName || wine.en;
+  return `<div class="original-names">${japanese}${english ? `<p lang="en">${escapeHTML(english)}</p>` : ''}</div>`;
+}
 function card(wine) {
   const purchase = koreaPurchase(wine);
   const korean = purchase ?? koreaReference(wine);
-  const main = purchase?.name || (korean?.vintage === wine.vintage ? korean?.name : '') || wine.en || wine.jp;
-  const subtitle = wine.jp !== main ? `<p class="jp" lang="ja">${escapeHTML(wine.jp)}</p>` : '';
+  const main = wine.koName || wine.en || wine.jp;
   const details = [labels[wine.type], wine.pack ? `${wine.pack}병` : '', wine.country, wine.region, wine.vintage, wine.volume ? `${wine.volume}mL` : '', ['out','member'].includes(wine.onlineStock) ? stockText[wine.onlineStock] : ''].filter(Boolean);
   const won = wine.yen == null ? '—' : asWon(wine.yen * meta.fx.krwPerYen);
   const pct = koreaPercentage(wine);
@@ -157,7 +179,7 @@ function card(wine) {
     : korean?.notes?.includes('빈티지 미표기') ? '빈티지 미표기 참고가' : '참고가';
   const hint = pct != null ? `<small class="${pct >= 0 ? 'saving' : 'premium'}">${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? '저렴' : '높음'}</small>`
     : korean ? `<small>${escapeHTML(reference)}</small>` : '';
-  return `<article class="wine"><div><h3>${escapeHTML(main)}</h3>${subtitle}<p class="meta">${details.map(value => `<span>${escapeHTML(value)}</span>`).join('')}</p></div>
+  return `<article class="wine"><div><h3>${escapeHTML(main)}</h3>${originalNames(wine)}<p class="meta">${details.map(value => `<span>${escapeHTML(value)}</span>`).join('')}</p></div>
     <dl class="prices"><div><dt>타카무라 온라인가</dt><dd>${asYen(wine.yen)}<small>${won}</small></dd></div>
     <div><dt>${purchase ? '한국 구매가' : '한국 참고가'}${store ? ` · ${escapeHTML(store)}` : ''}</dt><dd>${asWon(korean?.price)}${hint}</dd></div></dl>
     <div class="wine-actions"><button class="secondary" type="button" data-detail="${wine.id}">상세</button><button class="secondary" type="button" data-save="${wine.id}" aria-pressed="${saved.has(wine.id)}">${saved.has(wine.id) ? '찜 해제' : '찜'}</button></div></article>`;
@@ -212,11 +234,9 @@ function openDetails(wine) {
   } else if (match) {
     matchInfo = `<p>${asWon(match.price)} · ${escapeHTML(match.vintage || '빈티지 미표기')} · ${match.volume ? `${match.volume}mL` : '용량 미표기'} · ${escapeHTML(match.date)} 조회</p>`;
   }
-  const purchase = koreaPurchase(wine);
-  const reference = koreaReference(wine);
-  const heading = purchase?.name || (reference?.vintage === wine.vintage ? reference?.name : '') || wine.en || wine.jp;
-  const japanese = heading !== wine.jp ? `<p lang="ja">${escapeHTML(wine.jp)}</p>` : '';
-  $('detail-content').innerHTML = `<h2 id="detail-title">${escapeHTML(heading)}</h2>${japanese}
+  const heading = wine.koName || wine.en || wine.jp;
+  $('detail-content').innerHTML = `<h2 id="detail-title">${escapeHTML(heading)}</h2>${originalNames(wine)}
+    ${wine.enNameSupplemented ? '<p class="muted">영문명은 일본어 상품명을 바탕으로 보완했습니다.</p>' : ''}
     <p class="muted">${[wine.id, wine.producer, wine.area, wine.vintage, wine.volume ? `${wine.volume}mL` : ''].filter(Boolean).map(escapeHTML).join(' · ')}</p>
     <h3>타카무라 플러스</h3><p>${asYen(wine.yen)} · ${asWon(wine.yen == null ? null : wine.yen * meta.fx.krwPerYen)} · ${stockText[wine.onlineStock] || '온라인 재고 미확인'}</p>
     <p>에도보리 매장 재고와 판매가 확인 필요${product ? ` · <a target="_blank" rel="noopener" href="${product}">공식몰 상품 ↗</a>` : ''}</p>

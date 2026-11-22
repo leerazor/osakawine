@@ -378,11 +378,19 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
   line-height:1.3;
 }
 
-.wine .jp {
+.original-names {
   font-size:.79rem;
   margin:3px 0 5px;
   color:var(--muted);
   overflow-wrap:anywhere;
+}
+
+.original-names p {
+  margin:0;
+}
+
+.original-names p+p {
+  margin-top:2px;
 }
 
 .meta {
