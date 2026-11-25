@@ -55,7 +55,8 @@ const saved = loadSaved();
 const searchKeys = new Map(wines.map(wine => [wine.id, [
   wine.koName, ...(wine.koAliases ?? []), wine.jp, wine.enName, wine.en,
   wine.awine?.name, wine.korea?.purchase?.name, wine.korea?.reference?.name,
-  wine.producer, wine.country, wine.region, wine.area, wine.vintage, labels[wine.type], wine.id
+  wine.producer, wine.country, wine.region, wine.area, wine.vintage, labels[wine.type], wine.id,
+  wine.volume ? `${wine.volume} mL` : ''
 ].filter(Boolean).map(searchName)]));
 const asYen = yen => yen == null ? '—' : `¥${format.format(yen)}`;
 const asWon = won => won == null ? '—' : `${format.format(Math.round(won))}원`;
@@ -114,7 +115,7 @@ $('basis').innerHTML = `공식몰 전체 표시 ${format.format(meta.catalogTota
 options('country', unique(wines.map(wine => wine.country)).sort(collator.compare).map(country => [country, country]));
 options('region', unique(wines.map(wine => wine.region)).sort(collator.compare).map(region => [region, region]));
 options('vintage', unique(wines.map(wine => wine.vintage)).sort((a, b) => b.localeCompare(a)).map(vintage => [vintage, vintage]));
-options('volume', unique(wines.map(wine => wine.volume)).sort((a, b) => a - b).map(ml => [ml, `${format.format(ml)} mL`]));
+options('volume', unique(wines.map(wine => wine.volume)).filter(ml => ml !== 750).sort((a, b) => a - b).map(ml => [ml, `${format.format(ml)} mL`]));
 for (const [value, title] of [['', '전체'], ...Object.entries(labels)]) {
   if (value && !wines.some(wine => wine.type === value)) continue;
   const button = document.createElement('button');
@@ -147,7 +148,7 @@ function applyFilters() {
     (!current.country || wine.country === current.country) &&
     (!current.region || wine.region === current.region) &&
     (!current.vintage || (current.vintage === 'old' ? numericYear(wine) != null && numericYear(wine) < 2010 : wine.vintage === current.vintage)) &&
-    (!current.volume || wine.volume === Number(current.volume)) &&
+    (!current.volume || (current.volume === 'large' ? wine.volume >= 1500 : wine.volume === Number(current.volume))) &&
     (!current.korea || koreaStatus(wine) === current.korea) &&
     (!current.comparison || (wine.awine?.status || 'unmatched') === current.comparison) &&
     (!current.stock || (wine.onlineStock || 'unknown') === current.stock) &&
@@ -255,7 +256,8 @@ $('types').addEventListener('click', event => {
 });
 for (const control of [...Object.values(filters), $('sort'), $('saved-only')]) control.addEventListener('input', applyFilters);
 $('reset').addEventListener('click', () => {
-  Object.values(filters).forEach(el => { el.value = ''; }); setType(''); $('saved-only').checked = false; applyFilters();
+  for (const [name, el] of Object.entries(filters)) el.value = name === 'volume' ? '750' : '';
+  setType(''); $('saved-only').checked = false; applyFilters();
 });
 $('results').addEventListener('click', event => {
   const detail = event.target.closest('[data-detail]');

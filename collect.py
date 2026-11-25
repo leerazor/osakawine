@@ -15,7 +15,9 @@ TAKAMURA = 'https://takamuraplus.jp'
 AWINE = 'https://awine.kr'
 LIST_URL = TAKAMURA + '/shopbrand/all_items/'
 TITLE_YEAR = re.compile(r'\[\s*((?:18|19|20)\d{2})\s*\]')
-SIZE = re.compile(r'(\d+(?:\.\d+)?)\s*(m[lL]|[lL])(?![a-zA-Z])')
+SIZE = re.compile(r'(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+(?:[.,]\d+)?)\s*(ml|l)(?![a-z])', re.I)
+THOUSANDS = re.compile(r'\d{1,3}(?:,\d{3})+')
+TAKAMURA_SHIPPING = re.compile(r'\((?:[^()]|\([^()]*\))*(?:同梱|別送)(?:[^()]|\([^()]*\))*\)')
 CLASS = "contains(concat(' ',normalize-space(@class),' '), ' {} ')"
 NOW = datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat()
 
@@ -26,10 +28,11 @@ def node_text(node):
 
 def volume(value):
     value = unicodedata.normalize('NFKC', value).lower()
-    match = SIZE.search(value.replace(',', '.'))
+    match = SIZE.search(value)
     if match:
         amount, unit = match.groups()
-        return round(float(amount) * (1000 if unit.lower() == 'l' else 1))
+        amount = amount.replace(',', '' if THOUSANDS.fullmatch(amount) else '.')
+        return round(float(amount) * (1000 if unit == 'l' else 1))
     if re.search(r'ダブル\s*マグナム|더블\s*(?:매그넘|마그넘)|double\s+magnum', value):
         return 3000
     if re.search(r'マグナム|매그넘|마그넘|\bmagnum\b', value):
@@ -37,6 +40,17 @@ def volume(value):
     if re.search(r'ハーフ|하프\s*보틀|half[ -]bottle', value):
         return 375
     return None
+
+
+def takamura_volume(title, capacity, english=''):
+    title = unicodedata.normalize('NFKC', title)
+    title = re.sub(r'\(\s*※[^()]*\)', ' ', title).split('※', 1)[0]
+    named_size = volume(TAKAMURA_SHIPPING.sub(' ', title)) or volume(english)
+    # A large bottle's title can correct the generic 750 mL in the detail table.
+    # Keep specific small/standard capacities confirmed in the detail table.
+    if named_size and (named_size >= 1500 or capacity in (None, 750)):
+        return named_size
+    return capacity
 
 
 def fetch(url):
@@ -94,9 +108,10 @@ def details(url):
         value = node_text(node)
         if re.fullmatch(r'(品切れ|売り切れ|SOLD OUT|再入荷のお知らせ|再入荷お知らせ)(です)?', value, re.I):
             stock = 'out'
-    return {'jp': node_text(title), 'yen': int(price), 'en': field('name'),
+    label, english = node_text(title), field('name')
+    return {'jp': label, 'yen': int(price), 'en': english,
             'areaJP': field('sanchi'), 'areaEN': field('region'), 'producerJP': field('producer'),
-            'volume': volume(field('capacity')), 'onlineStock': stock}
+            'volume': takamura_volume(label, volume(field('capacity')), english), 'onlineStock': stock}
 
 
 def url_locations(body):

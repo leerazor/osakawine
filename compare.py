@@ -7,7 +7,7 @@ import json
 import re
 import unicodedata
 
-from collect import NOW, TITLE_YEAR, read_json, save, volume
+from collect import NOW, TITLE_YEAR, read_json, save, takamura_volume
 
 PRICE_RATE = {'krwPerYen': 8.4909, 'date': '2026-11-20',
               'url': 'https://kr.investing.com/currencies/jpy-krw-historical-data'}
@@ -158,7 +158,7 @@ def catalog(cache):
                      'vivino': vivino.get(identity_words(en)),
                      'country': country, 'region': region, 'area': d.get('areaJP') or d.get('areaEN', ''),
                      'producer': d.get('producerJP', ''), 'vintage': vintage, 'type': wt,
-                     'volume': d.get('volume') or volume(re.sub(r'\([^)]*同梱[^)]*\)', '', title)), 'pack': int(pack[1]) if pack else None})
+                     'volume': takamura_volume(title, d.get('volume'), en), 'pack': int(pack[1]) if pack else None})
     member_count = sum(detail.get('onlineStock') == 'member' for detail in details.values())
     metadata = {'catalogTotal': pages.get('1', {}).get('count'), 'catalogPages': len(pages),
                 'listingCount': len(seen), 'detailsCount': len(details) - member_count, 'wineCount': len(rows),
