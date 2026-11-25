@@ -191,10 +191,19 @@ const sorts = {
 };
 function applyFilters() {
   const current = Object.fromEntries(Object.entries(filters).map(([name, el]) => [name, el.value]));
+  const min = current.min === '' ? null : Number(current.min);
+  const max = current.max === '' ? null : Number(current.max);
+  const invalidPrice = [min, max].some(price => price != null && (!Number.isSafeInteger(price) || price < 0));
+  let rangeError = '';
+  if (invalidPrice) rangeError = '가격은 0엔 이상의 정수로 입력하세요.';
+  else if (min != null && max != null && min > max) rangeError = '최고가는 최저가 이상으로 입력하세요.';
+  $('price-range-error').textContent = rangeError;
+  $('price-range-error').hidden = !rangeError;
+  $('clear-price').disabled = min == null && max == null;
   const query = current.search.split(/\s+/).map(norm).filter(Boolean).join(' ');
   const matchedPhrases = phrasePattern ? query.replace(phrasePattern, phrase => phraseAliases.get(phrase)) : query;
   const terms = matchedPhrases.split(' ').filter(Boolean).map(searchName);
-  filtered = wines.filter(wine =>
+  filtered = rangeError ? [] : wines.filter(wine =>
     (!kind || wine.type === kind) &&
     (!$('saved-only').checked || saved.has(wine.id)) &&
     (!current.country || wine.country === current.country) &&
@@ -207,8 +216,8 @@ function applyFilters() {
       (price.kind === 'gemini' ? 'gemini' : 'external') === current['overseas-price'])) &&
     (!current.comparison || (wine.awine?.status || 'unmatched') === current.comparison) &&
     (!current.stock || (wine.onlineStock || 'unknown') === current.stock) &&
-    (!current.min || (wine.yen != null && wine.yen >= Number(current.min))) &&
-    (!current.max || (wine.yen != null && wine.yen <= Number(current.max))) &&
+    (min == null || (wine.yen != null && wine.yen >= min)) &&
+    (max == null || (wine.yen != null && wine.yen <= max)) &&
     terms.every(term => searchKeys.get(wine.id).some(name => name.includes(term)))
   );
   const sort = sorts[$('sort').value];
@@ -335,6 +344,11 @@ $('types').addEventListener('click', event => {
   if (button) { setType(button.dataset.type); applyFilters(); }
 });
 for (const control of [...Object.values(filters), $('sort'), $('saved-only')]) control.addEventListener('input', applyFilters);
+$('clear-price').addEventListener('click', () => {
+  filters.min.value = '';
+  filters.max.value = '';
+  applyFilters();
+});
 $('reset').addEventListener('click', () => {
   for (const [name, el] of Object.entries(filters)) el.value = name === 'volume' ? '750' : '';
   setType(''); $('saved-only').checked = false; applyFilters();

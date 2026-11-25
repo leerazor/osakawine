@@ -283,6 +283,38 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
   font-size:.93rem;
 }
 
+.price-range {
+  min-width:0;
+  margin:13px 0 0;
+  padding:0;
+  border:0;
+}
+
+.price-range legend {
+  padding:0;
+  margin-bottom:3px;
+  font-weight:650;
+  font-size:.86rem;
+}
+
+.price-range-fields {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,10rem)) auto;
+  gap:8px;
+  align-items:end;
+  justify-content:start;
+}
+
+.price-range-fields button {
+  min-height:43px;
+}
+
+.price-range-error {
+  margin:5px 0 0;
+  color:var(--accent-dark);
+  font-size:.82rem;
+}
+
 .types {
   display:flex;
   gap:6px;
@@ -691,6 +723,15 @@ dialog textarea {
           <option value="yen-desc">타카무라 가격 높은 순</option>
         </select></label>
       </div>
+      <fieldset class="price-range">
+        <legend>타카무라 가격 범위 (엔)</legend>
+        <div class="price-range-fields">
+          <label>최저가<input type="number" id="min" min="0" step="1" inputmode="numeric" placeholder="제한 없음" aria-describedby="price-range-error"></label>
+          <label>최고가<input type="number" id="max" min="0" step="1" inputmode="numeric" placeholder="제한 없음" aria-describedby="price-range-error"></label>
+          <button type="button" id="clear-price" class="secondary" disabled>가격 초기화</button>
+        </div>
+        <p id="price-range-error" class="price-range-error" role="status" hidden></p>
+      </fieldset>
       <div class="types" id="types" aria-label="와인 종류"></div>
       <details class="filters"><summary>산지·빈티지·가격 필터</summary><div class="filter-grid">
         <label>국가<select id="country"><option value="">전체</option></select></label>
@@ -701,8 +742,6 @@ dialog textarea {
         <label>해외 참고가<select id="overseas-price"><option value="">전체</option><option value="external">판매처·경매 출처 확인</option><option value="gemini">Gemini 조회값 · 미검증</option></select></label>
         <label>에이와인 비교<select id="comparison"><option value="">전체</option><option value="exact">동일 조건</option><option value="reference">참고 가격</option><option value="unmatched">가격 미확인</option></select></label>
         <label>타카무라 온라인 재고<select id="stock"><option value="">전체</option><option value="available">온라인 주문 가능</option><option value="out">온라인 품절</option><option value="member">상품 상세 회원 전용</option><option value="unknown">미확인</option></select></label>
-        <label>최저가 (엔)<input type="number" id="min" min="0" step="1" inputmode="numeric" placeholder="0"></label>
-        <label>최고가 (엔)<input type="number" id="max" min="0" step="1" inputmode="numeric" placeholder="제한 없음"></label>
         <button type="button" id="reset" class="secondary">필터 초기화</button>
       </div></details>
     </div>
@@ -912,10 +951,19 @@ const sorts = {
 };
 function applyFilters() {
   const current = Object.fromEntries(Object.entries(filters).map(([name, el]) => [name, el.value]));
+  const min = current.min === '' ? null : Number(current.min);
+  const max = current.max === '' ? null : Number(current.max);
+  const invalidPrice = [min, max].some(price => price != null && (!Number.isSafeInteger(price) || price < 0));
+  let rangeError = '';
+  if (invalidPrice) rangeError = '가격은 0엔 이상의 정수로 입력하세요.';
+  else if (min != null && max != null && min > max) rangeError = '최고가는 최저가 이상으로 입력하세요.';
+  $('price-range-error').textContent = rangeError;
+  $('price-range-error').hidden = !rangeError;
+  $('clear-price').disabled = min == null && max == null;
   const query = current.search.split(/\s+/).map(norm).filter(Boolean).join(' ');
   const matchedPhrases = phrasePattern ? query.replace(phrasePattern, phrase => phraseAliases.get(phrase)) : query;
   const terms = matchedPhrases.split(' ').filter(Boolean).map(searchName);
-  filtered = wines.filter(wine =>
+  filtered = rangeError ? [] : wines.filter(wine =>
     (!kind || wine.type === kind) &&
     (!$('saved-only').checked || saved.has(wine.id)) &&
     (!current.country || wine.country === current.country) &&
@@ -928,8 +976,8 @@ function applyFilters() {
       (price.kind === 'gemini' ? 'gemini' : 'external') === current['overseas-price'])) &&
     (!current.comparison || (wine.awine?.status || 'unmatched') === current.comparison) &&
     (!current.stock || (wine.onlineStock || 'unknown') === current.stock) &&
-    (!current.min || (wine.yen != null && wine.yen >= Number(current.min))) &&
-    (!current.max || (wine.yen != null && wine.yen <= Number(current.max))) &&
+    (min == null || (wine.yen != null && wine.yen >= min)) &&
+    (max == null || (wine.yen != null && wine.yen <= max)) &&
     terms.every(term => searchKeys.get(wine.id).some(name => name.includes(term)))
   );
   const sort = sorts[$('sort').value];
@@ -1056,6 +1104,11 @@ $('types').addEventListener('click', event => {
   if (button) { setType(button.dataset.type); applyFilters(); }
 });
 for (const control of [...Object.values(filters), $('sort'), $('saved-only')]) control.addEventListener('input', applyFilters);
+$('clear-price').addEventListener('click', () => {
+  filters.min.value = '';
+  filters.max.value = '';
+  applyFilters();
+});
 $('reset').addEventListener('click', () => {
   for (const [name, el] of Object.entries(filters)) el.value = name === 'volume' ? '750' : '';
   setType(''); $('saved-only').checked = false; applyFilters();

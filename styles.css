@@ -275,6 +275,38 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
   font-size:.93rem;
 }
 
+.price-range {
+  min-width:0;
+  margin:13px 0 0;
+  padding:0;
+  border:0;
+}
+
+.price-range legend {
+  padding:0;
+  margin-bottom:3px;
+  font-weight:650;
+  font-size:.86rem;
+}
+
+.price-range-fields {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,10rem)) auto;
+  gap:8px;
+  align-items:end;
+  justify-content:start;
+}
+
+.price-range-fields button {
+  min-height:43px;
+}
+
+.price-range-error {
+  margin:5px 0 0;
+  color:var(--accent-dark);
+  font-size:.82rem;
+}
+
 .types {
   display:flex;
   gap:6px;
