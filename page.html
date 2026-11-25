@@ -33,6 +33,7 @@
         <label>용량<select id="volume"><option value="750" selected>750 mL</option><option value="large">대용량 · 1,500 mL 이상</option><option value="">전체 용량</option></select></label>
         <label class="sort-label">정렬<select id="sort">
           <option value="catalog">공식몰 목록순</option><option value="kr-pct">한국 구매가 대비 절약률 큰 순</option><option value="kr-savings">한국 구매가 대비 절약액 큰 순</option><option value="yen-asc">타카무라 가격 낮은 순</option><option value="yen-desc">타카무라 가격 높은 순</option><option value="pct">에이와인 대비 절약률 큰 순</option><option value="savings">에이와인 대비 절약액 큰 순</option><option value="estimated">에이와인 대비 절약률 (750mL 가정 포함)</option><option value="awine-asc">에이와인 가격 낮은 순</option><option value="oldest">오래된 빈티지 순</option>
+          <option value="ws-asc">와인서쳐 가격 낮은 순</option><option value="ws-desc">와인서쳐 가격 높은 순</option>
         </select></label>
       </div>
       <div class="types" id="types" aria-label="와인 종류"></div>
@@ -52,7 +53,7 @@
     <p id="empty" hidden>조건에 맞는 와인이 없습니다.</p><div id="results" class="results"></div>
     <button type="button" id="more" class="secondary" hidden>더 보기</button>
   </section>
-  <footer class="footer"><p id="basis"></p><p>한국 구매가 정렬에는 동일 와인·빈티지·용량으로 구매 가능한 판매가를 사용합니다. 해외직구는 세금과 배송비를 확인한 총액을 사용합니다. 타카무라 원화 환산에는 카드·환전 수수료와 한국 반입 비용을 포함하지 않습니다.</p><p><a href="https://takamuraplus.jp/shopbrand/all_items/" target="_blank" rel="noopener">타카무라 플러스 상품 목록 ↗</a> · <a href="https://awine.kr/" target="_blank" rel="noopener">에이와인 ↗</a></p></footer>
+  <footer class="footer"><p id="basis"></p><p id="wine-searcher-basis"></p><p>한국 구매가 정렬에는 동일 와인·빈티지·용량으로 구매 가능한 판매가를 사용합니다. 해외직구는 세금과 배송비를 확인한 총액을 사용합니다. 타카무라 원화 환산에는 카드·환전 수수료와 한국 반입 비용을 포함하지 않습니다.</p><p><a href="https://takamuraplus.jp/shopbrand/all_items/" target="_blank" rel="noopener">타카무라 플러스 상품 목록 ↗</a> · <a href="https://awine.kr/" target="_blank" rel="noopener">에이와인 ↗</a></p></footer>
 </main>
 <dialog id="wine-dialog" aria-labelledby="detail-title">
   <section id="detail-content"></section>
