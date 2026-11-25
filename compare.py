@@ -55,6 +55,21 @@ RECHECK_CANONICAL_NAMES = {
 AWINE_STYLES = {'레드와인': 'red', '화이트와인': 'white', '로제와인': 'rose',
                 '스파클링와인': 'sparkling', '샴페인': 'sparkling', '로제샴페인': 'sparkling',
                 '오렌지와인': 'orange'}
+UNBRACKETED_VINTAGE = re.compile(r'(?<=[ァ-ヺー])\.?((?:19|20)\d{2})(?=\s*[ァ-ヺー])')
+NON_VINTAGE = re.compile(r'(?<![A-Za-z])NV(?:(?![A-Za-z])|(?=Lot\b))|ノン\s*ヴィンテージ', re.I)
+
+
+def takamura_vintage(title, kind):
+    match = TITLE_YEAR.search(title)
+    if match:
+        return match[1]
+    if NON_VINTAGE.search(title):
+        return 'NV'
+    if kind not in ('set', 'other'):
+        match = UNBRACKETED_VINTAGE.search(title.split('※', 1)[0])
+        if match:
+            return match[1]
+    return None
 
 
 def ascii_text(value):
@@ -148,8 +163,7 @@ def catalog(cache):
         if not looks_wine(title, d):
             continue
         wt = label_type(title)
-        vintage_match = TITLE_YEAR.search(title)
-        vintage = vintage_match[1] if vintage_match else ('NV' if re.search(r'(?<![A-Za-z])NV(?![A-Za-z])|ノン\s*ヴィンテージ', title, re.I) else None)
+        vintage = takamura_vintage(title, wt)
         country, region = location(d, title)
         pack = PACK_COUNT.search(title)
         en = d.get('en', '')

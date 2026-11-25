@@ -14,6 +14,9 @@ def add_wine_searcher_prices(data, price_file):
     if not price_file.is_file():
         return
     prices = json.loads(price_file.read_text(encoding='utf-8'))
+    recheck = prices.get('recheck', {})
+    queried = set(recheck.get('queried', ()))
+    matched_from = recheck.get('matchedFrom', {})
     checked = available = 0
     for wine in data['wines']:
         row = prices['results'].get(wine['id'])
@@ -25,9 +28,16 @@ def add_wine_searcher_prices(data, price_file):
         if price is not None and (wine['type'] == 'set' or wine['vintage'] is None or wine['volume'] is None):
             raise ValueError(f"Unmatched Wine-Searcher price for {wine['id']}")
         wine['wineSearcherUsd'] = price
+        if wine['id'] in queried:
+            wine['wineSearcherRechecked'] = True
+        if wine['id'] in matched_from:
+            wine['wineSearcherMatchedFrom'] = matched_from[wine['id']]
         checked += 1
         available += price is not None
     data['meta']['wineSearcher'] = {'date': prices['date'], 'checked': checked, 'available': available}
+    if recheck:
+        data['meta']['wineSearcher']['rechecked'] = sum(wine.get('wineSearcherRechecked', False) for wine in data['wines'])
+        data['meta']['wineSearcher']['matched'] = sum('wineSearcherMatchedFrom' in wine for wine in data['wines'])
 
 
 def main():
