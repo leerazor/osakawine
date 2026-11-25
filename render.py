@@ -36,6 +36,8 @@ def add_wine_searcher_prices(data, price_file):
         checked += 1
         available += price is not None
     data['meta']['wineSearcher'] = {'date': prices['date'], 'checked': checked, 'available': available}
+    if 'fx' in prices:
+        data['meta']['wineSearcher']['fx'] = prices['fx']
     if recheck:
         data['meta']['wineSearcher']['rechecked'] = sum(wine.get('wineSearcherRechecked', False) for wine in data['wines'])
         data['meta']['wineSearcher']['matched'] = sum('wineSearcherMatchedFrom' in wine for wine in data['wines'])

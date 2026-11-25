@@ -87,8 +87,26 @@ function wineSearcherNote(wine) {
   return wine.wineSearcherRechecked ? 'Gemini 재조회 · 세전' : 'Gemini 조회 · 세전';
 }
 const delta = wine => wine.awine?.status === 'exact' && wine.yen != null ? wine.awine.price - Math.round(wine.yen * meta.fx.krwPerYen) : null;
-const estimatedPercentage = wine => wine.awine?.estimated && wine.yen != null ? 100 * (wine.awine.price - Math.round(wine.yen * meta.fx.krwPerYen)) / wine.awine.price : null;
-const percentage = wine => delta(wine) == null ? null : 100 * delta(wine) / wine.awine.price;
+const wsFx = meta.wineSearcher?.fx;
+function wineSearcherYen(wine) {
+  const rate = wsFx?.yenPerUsd;
+  return wine.wineSearcherUsd > 0 && rate > 0 ? wine.wineSearcherUsd * rate : null;
+}
+function wineSearcherDelta(wine) {
+  const average = wineSearcherYen(wine);
+  return average == null || wine.yen == null ? null : (average - wine.yen) * meta.fx.krwPerYen;
+}
+function wineSearcherPercentage(wine) {
+  const average = wineSearcherYen(wine);
+  return average == null || wine.yen == null ? null : 100 * (average - wine.yen) / average;
+}
+function wineSearcherComparison(wine) {
+  const savings = wineSearcherDelta(wine);
+  if (savings == null) return '';
+  if (Math.round(Math.abs(savings)) === 0) return '환산가 동일';
+  const rate = Math.abs(wineSearcherPercentage(wine)).toFixed(1);
+  return `${rate}% ${savings > 0 ? '저렴' : '높음'} · ${asWon(Math.abs(savings))} 차이`;
+}
 function koreaPurchase(wine) {
   return wine.korea?.purchase ?? (wine.awine?.status === 'exact' && wine.awine.stock === 'available' ? {...wine.awine, store:'awine'} : null);
 }
@@ -141,7 +159,9 @@ $('basis').innerHTML = `공식몰 전체 표시 ${format.format(meta.catalogTota
 if (meta.wineSearcher) {
   const {date, checked, available, rechecked, matched} = meta.wineSearcher;
   const update = rechecked || matched ? ` 동일 조건 재조회 ${format.format(rechecked)}개 · 같은 상품의 기존 참고값 연결 ${format.format(matched)}개.` : '';
-  $('wine-searcher-basis').textContent = `와인서쳐 가격은 Gemini가 ${date}에 조회한 전 세계 세전 USD 평균가 참고값입니다. ${format.format(checked)}개 조사 · ${format.format(available)}개 가격 표시.${update} 와인서쳐 원문은 별도 검증하지 않았습니다.`;
+  const usdYenLink = itemLink(wsFx?.url, 'www.investing.com');
+  const exchange = wsFx ? ` 절약액은 USD 평균가를 엔화로 환산해 타카무라 온라인가를 뺀 차이입니다. 절약률은 와인서쳐 평균가를 기준으로 계산합니다. ${escapeHTML(wsFx.date)} 기준 $1 = ${asYen(wsFx.yenPerUsd)}${usdYenLink ? ` · <a href="${usdYenLink}" target="_blank" rel="noopener">달러·엔 환율 출처 ↗</a>` : ''}.` : '';
+  $('wine-searcher-basis').innerHTML = `와인서쳐 가격은 Gemini가 ${escapeHTML(date)}에 조회한 전 세계 세전 USD 평균가 참고값입니다. ${format.format(checked)}개 조사 · ${format.format(available)}개 가격 표시.${update} 와인서쳐 원문은 별도 검증하지 않았습니다.${exchange}`;
 }
 options('country', unique(wines.map(wine => wine.country)).sort(collator.compare).map(country => [country, country]));
 options('region', unique(wines.map(wine => wine.region)).sort(collator.compare).map(region => [region, region]));
@@ -164,11 +184,11 @@ function numericOrder(read, direction = 1) {
     return direction * (x - y);
   };
 }
-const sorts = { pct:numericOrder(percentage, -1), estimated:numericOrder(wine => percentage(wine) ?? estimatedPercentage(wine), -1), savings:numericOrder(delta, -1),
+const sorts = {
+  'ws-pct':numericOrder(wineSearcherPercentage, -1), 'ws-savings':numericOrder(wineSearcherDelta, -1),
   'kr-pct':numericOrder(koreaPercentage, -1), 'kr-savings':numericOrder(koreaDelta, -1),
-  'yen-asc':numericOrder(wine => wine.yen), 'yen-desc':numericOrder(wine => wine.yen, -1),
-  'ws-asc':numericOrder(wine => wine.wineSearcherUsd), 'ws-desc':numericOrder(wine => wine.wineSearcherUsd, -1),
-  'awine-asc':numericOrder(wine => wine.awine?.price), oldest:numericOrder(numericYear) };
+  'yen-asc':numericOrder(wine => wine.yen), 'yen-desc':numericOrder(wine => wine.yen, -1)
+};
 function applyFilters() {
   const current = Object.fromEntries(Object.entries(filters).map(([name, el]) => [name, el.value]));
   const query = current.search.split(/\s+/).map(norm).filter(Boolean).join(' ');
@@ -220,10 +240,12 @@ function card(wine) {
     : korean?.notes?.includes('빈티지 미표기') ? '빈티지 미표기 참고가' : '참고가';
   const hint = pct != null ? `<small class="${pct >= 0 ? 'saving' : 'premium'}">${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? '저렴' : '높음'}</small>`
     : korean ? `<small>${escapeHTML(reference)}</small>` : '';
+  const wsComparison = wineSearcherComparison(wine);
+  const wsHint = wsComparison ? `<small class="${wineSearcherDelta(wine) >= 0 ? 'saving' : 'premium'}">${wsComparison}</small>` : '';
   return `<article class="wine"><div><h3>${escapeHTML(main)}</h3>${originalNames(wine)}<p class="meta">${details.map(value => `<span>${escapeHTML(value)}</span>`).join('')}</p></div>
     <dl class="prices"><div><dt>타카무라 온라인가</dt><dd>${asYen(wine.yen)}<small>${won}</small></dd></div>
     <div><dt>${purchase ? '한국 구매가' : '한국 참고가'}${store ? ` · ${escapeHTML(store)}` : ''}</dt><dd>${asWon(korean?.price)}${hint}</dd></div>
-    <div><dt>와인서쳐 가격</dt><dd>${asUsd(wine.wineSearcherUsd)}<small>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : wineSearcherNote(wine)}</small></dd></div>
+    <div><dt>와인서쳐 가격</dt><dd>${asUsd(wine.wineSearcherUsd)}${wsHint}<small>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : wineSearcherNote(wine)}</small></dd></div>
     ${overseasSummary(wine)}</dl>
     <div class="wine-actions"><button class="secondary" type="button" data-detail="${wine.id}">상세</button><button class="secondary" type="button" data-save="${wine.id}" aria-pressed="${saved.has(wine.id)}">${saved.has(wine.id) ? '찜 해제' : '찜'}</button></div></article>`;
 }
@@ -289,6 +311,7 @@ function openDetails(wine) {
     matchInfo = `<p>${asWon(match.price)} · ${escapeHTML(match.vintage || '빈티지 미표기')} · ${match.volume ? `${match.volume}mL` : '용량 미표기'} · ${escapeHTML(match.date)} 조회</p>`;
   }
   const heading = wine.koName || wine.en || wine.jp;
+  const wsComparison = wineSearcherComparison(wine);
   $('detail-content').innerHTML = `<h2 id="detail-title">${escapeHTML(heading)}</h2>${originalNames(wine)}
     ${wine.enNameSupplemented ? '<p class="muted">영문명은 일본어 상품명을 바탕으로 보완했습니다.</p>' : ''}
     <p class="muted">${[wine.id, wine.producer, wine.area, wine.vintage, wine.volume ? `${wine.volume}mL` : ''].filter(Boolean).map(escapeHTML).join(' · ')}</p>
@@ -297,6 +320,7 @@ function openDetails(wine) {
     ${koreanDetails(wine)}
     ${!koreaPurchase(wine) && !koreaReference(wine) ? '<h3>한국 가격</h3><p>조회한 판매처에서 비교할 상품 가격을 확인하지 못했습니다.</p>' : ''}
     <h3>와인서쳐 가격</h3><p>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : `${asUsd(wine.wineSearcherUsd)} · 전 세계 세전 평균가 · ${wineSearcherNote(wine)} · 원문 미검증`}</p>
+    ${wsComparison ? `<p>평균가 ${asWon(wineSearcherYen(wine) * meta.fx.krwPerYen)} 환산 · 타카무라 온라인가가 ${wsComparison}</p>` : ''}
     ${wine.wineSearcherMatchedFrom ? `<p>같은 와인·빈티지·용량의 타카무라 상품번호 ${escapeHTML(wine.wineSearcherMatchedFrom)}에서 Gemini 참고값을 가져왔습니다.</p>` : ''}
     ${overseasDetails(wine)}
     <h3>에이와인</h3>${matchInfo}${match?.notes.length ? `<p>참고가 · ${match.notes.map(escapeHTML).join(' · ')}</p>` : ''}
