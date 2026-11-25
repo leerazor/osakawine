@@ -23,7 +23,9 @@
       <div class="links"><a href="tel:+81664433519">매장 전화</a><a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&amp;query=TAKAMURA+Wine+%26+Coffee+Roasters+Osaka+Edobori">지도 ↗</a><a target="_blank" rel="noopener" href="https://takamuranet.com/shopinfo.html">공식 매장 안내 ↗</a></div>
     </section>
   </section>
-  <aside class="notice"><strong>매장 재고·판매가는 방문 전 확인</strong><p>타카무라 공식 안내에 따르면 온라인몰과 매장의 취급 상품이 다릅니다. 찜한 목록에서 일본어 문의 문구를 복사해 매장 재고, 판매가, 홀드 또는 매장 수령 가능 여부를 문의하세요. <a target="_blank" rel="noopener" href="https://takamuraplus.jp/html/page1.html">공식 FAQ ↗</a></p></aside>
+  <aside class="notice"><strong>매장 재고·판매가는 방문 전 확인</strong><p>타카무라 공식 안내에 따르면 온라인몰과 매장의 취급 상품이 다릅니다. 찜한 목록에서 일본어 문의 문구를 복사해 매장 재고, 판매가, 홀드 또는 매장 수령 가능 여부를 문의하세요. <a target="_blank" rel="noopener" href="https://takamuraplus.jp/html/page1.html">공식 FAQ ↗</a></p>
+    <p id="recommendation-basis" hidden>구매 추천은 동일 빈티지·용량의 한국 구매가와 타카무라 온라인가를 비교해 골랐습니다. 한국 입국 시 성인 1인당 주류 합계 2L·미화 $400 이하가 면세 범위입니다. 실제 구입가와 입국 시 환율로 합계를 확인하세요. <a href="https://www.customs.go.kr/kcs/cm/cntnts/cntntsView.do?cntntsId=829&amp;mi=2837" target="_blank" rel="noopener">관세청 면세 기준 ↗</a></p>
+  </aside>
   <section id="catalog" aria-labelledby="catalog-title">
     <div class="section-head"><div><h2 id="catalog-title">와인 목록</h2><p id="snapshot" class="muted"></p></div><button type="button" id="copy-list" class="secondary" disabled>찜한 와인 일본어 복사</button></div>
     <div class="stats" id="stats" aria-label="조사 범위"></div>
@@ -62,7 +64,12 @@
         <button type="button" id="reset" class="secondary">필터 초기화</button>
       </div></details>
     </div>
-    <div class="result-head"><p id="count" aria-live="polite"></p><label class="saved-only"><input id="saved-only" type="checkbox">찜한 와인만 <span id="saved-count">0</span></label></div>
+    <div class="result-head"><p id="count" aria-live="polite"></p>
+      <div class="result-toggles">
+        <label class="saved-only" id="recommendation-filter" hidden><input id="recommended-only" type="checkbox">추천만 보기</label>
+        <label class="saved-only"><input id="saved-only" type="checkbox">찜한 와인만 <span id="saved-count">0</span></label>
+      </div>
+    </div>
     <p id="empty" hidden>조건에 맞는 와인이 없습니다.</p><div id="results" class="results"></div>
     <button type="button" id="more" class="secondary" hidden>더 보기</button>
   </section>

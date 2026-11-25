@@ -153,6 +153,9 @@ function stat(number, label) {
 }
 $('snapshot').textContent = `${meta.checkedDate} 조회 · ¥100 ≈ ${asWon(meta.fx.krwPerYen * 100)} · 온라인 상품가`;
 $('stats').innerHTML = [stat(wines.length, '수집한 와인·세트'), stat(wines.filter(wine => koreaStatus(wine) === 'available').length, '한국 구매가 확인'), stat(wines.filter(wine => koreaStatus(wine) === 'reference').length, '한국 참고가만 확인')].join('');
+const hasRecommendations = wines.some(wine => wine.recommendation);
+$('recommendation-basis').hidden = !hasRecommendations;
+$('recommendation-filter').hidden = !hasRecommendations;
 const awineUpdate = meta.awineRecheck ? ` 에이와인 재조회 ${escapeHTML(meta.awineRecheck.date)} · ${format.format(meta.awineRecheck.added)}건 추가.` : '';
 const koreaUpdate = meta.korea ? ` 한국 판매처 ${escapeHTML(meta.korea.date)} 대조 · 에이와인 가격이 없던 ${format.format(meta.korea.targets)}개 대상.` : '';
 $('basis').innerHTML = `공식몰 전체 표시 ${format.format(meta.catalogTotal ?? 0)}개 · 확인한 고유 상품 ${format.format(meta.listingCount)}개 · 상품 상세 ${format.format(meta.detailsCount)}개${meta.memberOnly ? ` · 상세 회원 전용 ${format.format(meta.memberOnly)}개` : ''}${meta.detailsUnavailable ? ` · 상세 미확인 ${format.format(meta.detailsUnavailable)}개` : ''} · 에이와인 상세 ${format.format(meta.awinePages)}개.${awineUpdate}${koreaUpdate} 환율 ${escapeHTML(meta.fx.date)} 기준. <a href="${escapeHTML(meta.fx.url)}" target="_blank" rel="noopener">환율 출처 ↗</a>`;
@@ -206,6 +209,7 @@ function applyFilters() {
   filtered = rangeError ? [] : wines.filter(wine =>
     (!kind || wine.type === kind) &&
     (!$('saved-only').checked || saved.has(wine.id)) &&
+    (!$('recommended-only').checked || wine.recommendation) &&
     (!current.country || wine.country === current.country) &&
     (!current.region || wine.region === current.region) &&
     (!current.vintage || (current.vintage === 'old' ? numericYear(wine) != null && numericYear(wine) < 2010 : wine.vintage === current.vintage)) &&
@@ -256,7 +260,7 @@ function card(wine) {
     <div><dt>${purchase ? '한국 구매가' : '한국 참고가'}${store ? ` · ${escapeHTML(store)}` : ''}</dt><dd>${asWon(korean?.price)}${hint}</dd></div>
     <div><dt>와인서쳐 가격</dt><dd>${asUsd(wine.wineSearcherUsd)}${wsHint}<small>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : wineSearcherNote(wine)}</small></dd></div>
     ${overseasSummary(wine)}</dl>
-    <div class="wine-actions"><button class="secondary" type="button" data-detail="${wine.id}">상세</button><button class="secondary" type="button" data-save="${wine.id}" aria-pressed="${saved.has(wine.id)}">${saved.has(wine.id) ? '찜 해제' : '찜'}</button></div></article>`;
+    <div class="wine-actions">${wine.recommendation ? '<span class="recommendation-badge">구매 추천</span>' : ''}<button class="secondary" type="button" data-detail="${wine.id}">상세</button><button class="secondary" type="button" data-save="${wine.id}" aria-pressed="${saved.has(wine.id)}">${saved.has(wine.id) ? '찜 해제' : '찜'}</button></div></article>`;
 }
 function render() {
   const shown = Math.min(visible, filtered.length);
@@ -303,11 +307,16 @@ function overseasDetails(wine) {
   });
   return `<h3>해외 참고가</h3><p>${escapeHTML(meta.overseasPriceDate)} 조회</p><ul>${details.join('')}</ul>`;
 }
+function recommendationDetails(wine) {
+  if (!wine.recommendation) return '';
+  const usd = wsFx?.yenPerUsd > 0 ? ` · 구매가 약 ${asUsd(Math.round(wine.yen / wsFx.yenPerUsd))}` : '';
+  return `<h3>구매 추천</h3><p>${escapeHTML(wine.recommendation.reason)}</p><p class="muted">${escapeHTML(meta.purchaseRecommendationDate)} 가격 확인${usd}</p>`;
+}
 function openDetails(wine) {
   activeId = wine.id;
   const product = itemLink(wine.url, 'takamuraplus.jp');
   const awine = itemLink(wine.awine?.url, 'awine.kr');
-  const vivino = itemLink(wine.vivino, 'www.vivino.com');
+  const vivino = itemLink(wine.recommendation?.vivino ?? wine.vivino, 'www.vivino.com');
   const match = wine.awine;
   let matchInfo = '<p>대조할 가격을 확인하지 못했습니다.</p>';
   if (match?.components) {
@@ -326,6 +335,7 @@ function openDetails(wine) {
     <p class="muted">${[wine.id, wine.producer, wine.area, wine.vintage, wine.volume ? `${wine.volume}mL` : ''].filter(Boolean).map(escapeHTML).join(' · ')}</p>
     <h3>타카무라 플러스</h3><p>${asYen(wine.yen)} · ${asWon(wine.yen == null ? null : wine.yen * meta.fx.krwPerYen)} · ${stockText[wine.onlineStock] || '온라인 재고 미확인'}</p>
     <p>에도보리 매장 재고와 판매가 확인 필요${product ? ` · <a target="_blank" rel="noopener" href="${product}">공식몰 상품 ↗</a>` : ''}</p>
+    ${recommendationDetails(wine)}
     ${koreanDetails(wine)}
     ${!koreaPurchase(wine) && !koreaReference(wine) ? '<h3>한국 가격</h3><p>조회한 판매처에서 비교할 상품 가격을 확인하지 못했습니다.</p>' : ''}
     <h3>와인서쳐 가격</h3><p>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : `${asUsd(wine.wineSearcherUsd)} · 전 세계 세전 평균가 · ${wineSearcherNote(wine)} · 원문 미검증`}</p>
@@ -343,7 +353,7 @@ $('types').addEventListener('click', event => {
   const button = event.target.closest('[data-type]');
   if (button) { setType(button.dataset.type); applyFilters(); }
 });
-for (const control of [...Object.values(filters), $('sort'), $('saved-only')]) control.addEventListener('input', applyFilters);
+for (const control of [...Object.values(filters), $('sort'), $('saved-only'), $('recommended-only')]) control.addEventListener('input', applyFilters);
 $('clear-price').addEventListener('click', () => {
   filters.min.value = '';
   filters.max.value = '';
@@ -351,7 +361,7 @@ $('clear-price').addEventListener('click', () => {
 });
 $('reset').addEventListener('click', () => {
   for (const [name, el] of Object.entries(filters)) el.value = name === 'volume' ? '750' : '';
-  setType(''); $('saved-only').checked = false; applyFilters();
+  setType(''); $('saved-only').checked = false; $('recommended-only').checked = false; applyFilters();
 });
 $('results').addEventListener('click', event => {
   const detail = event.target.closest('[data-detail]');

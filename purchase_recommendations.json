@@ -1,0 +1,101 @@
+{
+  "date": "2026-11-25",
+  "results": {
+    "000000032273": {
+      "vintage": "2022",
+      "volume": 750,
+      "yen": 24700,
+      "koreaPrice": 399000,
+      "reason": "포이약 2022를 고를 때 국내 픽업가 대비 절약률이 큰 편입니다.",
+      "vivino": "https://www.vivino.com/en/chateau-lynch-bages-pauillac-grand-cru-classe/w/79262?year=2022"
+    },
+    "000000026861": {
+      "vintage": "2021",
+      "volume": 750,
+      "yen": 13200,
+      "koreaPrice": 250000,
+      "reason": "1만 엔대 포이약 그랑 크뤼. 다른 한 병과 예산을 나누기 좋습니다.",
+      "vivino": "https://www.vivino.com/en/chateau-clerc-milon-pauillac-grand-cru-classe/w/4089?year=2021"
+    },
+    "000000026863": {
+      "vintage": "2021",
+      "volume": 750,
+      "yen": 37900,
+      "koreaPrice": 570000,
+      "reason": "생쥘리앵의 숙성용 보르도. 국내 픽업가와의 차이가 큰 한 병입니다.",
+      "vivino": "https://www.vivino.com/en/chateau-leoville-las-cases-saint-julien-grand-cru-classe/w/81848?year=2021"
+    },
+    "000000029525": {
+      "vintage": "2021",
+      "volume": 750,
+      "yen": 32600,
+      "koreaPrice": 490000,
+      "reason": "생테스테프의 플래그십 레드. 국내 픽업가와의 차이가 큰 편입니다.",
+      "vivino": "https://www.vivino.com/fr/cos-d-estournel-cos-d-estournel/w/74346"
+    },
+    "000000020766": {
+      "vintage": "NV",
+      "volume": 750,
+      "yen": 8300,
+      "koreaPrice": 119000,
+      "reason": "피노 뫼니에 로제 샴페인. 첫 병에 예산을 많이 쓴 경우에도 조합하기 좋습니다.",
+      "vivino": "https://www.vivino.com/en/laherte-freres-rose-de-meunier-extra-brut-champagne/w/4433441"
+    },
+    "000000033701": {
+      "vintage": "2022",
+      "volume": 750,
+      "yen": 48400,
+      "koreaPrice": 670000,
+      "reason": "포이약 그랑 뱅 2022를 장기 보관용으로 고를 때 적합합니다.",
+      "vivino": "https://www.vivino.com/en/chateau-pichon-longueville-comtesse-de-lalande-pauillac-grand-cru-classe/w/1125543?year=2022"
+    },
+    "000000031959": {
+      "vintage": "2015",
+      "volume": 750,
+      "yen": 21300,
+      "koreaPrice": 300000,
+      "reason": "2015년 빈티지의 숙성 보르도를 2만 엔대에 고를 수 있습니다.",
+      "vivino": "https://www.vivino.com/en/chateau-pontet-canet-pauillac-grand-cru-classe/w/14362?year=2015"
+    },
+    "000000029511": {
+      "vintage": "2012",
+      "volume": 750,
+      "yen": 59800,
+      "koreaPrice": 796200,
+      "reason": "2012년 숙성 마고. 한 병이 면세 금액 한도의 대부분을 차지합니다.",
+      "vivino": "https://www.vivino.com/en/chateau-palmer-grand-vin-de-chateau-palmer-grand-cru-classe/w/9220?year=2012"
+    },
+    "000000021395": {
+      "vintage": "2008",
+      "volume": 750,
+      "yen": 52800,
+      "koreaPrice": 635000,
+      "reason": "늦게 데고르주망한 2008년 샴페인. 한 병 위주로 예산을 쓰기 좋은 후보입니다.",
+      "vivino": "https://www.vivino.com/en/bollinger-r-d-extra-brut-champagne-recemment-degorge/w/1164702?year=2008"
+    },
+    "000000026679": {
+      "vintage": "2022",
+      "volume": 750,
+      "yen": 6980,
+      "koreaPrice": 90000,
+      "reason": "7천 엔 미만의 토스카나 레드. 고가 와인에 한 병 더 보태기 좋은 가격입니다.",
+      "vivino": "https://www.vivino.com/en/tenuta-san-guido-guidalberto/w/5080?year=2022"
+    },
+    "000000033724": {
+      "vintage": "NV",
+      "volume": 750,
+      "yen": 14300,
+      "koreaPrice": 164400,
+      "reason": "에글리 우리에의 논빈티지 샴페인. 동일 뀌베의 더 저렴한 타카무라 상품입니다.",
+      "vivino": "https://www.vivino.com/en/egly-ouriet-les-premices-brut-champagne-grand-cru-ambonnay/w/8907967"
+    },
+    "000000028083": {
+      "vintage": "2022",
+      "volume": 750,
+      "yen": 37800,
+      "koreaPrice": 388500,
+      "reason": "퓔리니 몽라셰 프리미에 크뤼 샤르도네. 화이트 한 병을 가져오고 싶을 때의 후보입니다.",
+      "vivino": "https://www.vivino.com/fr/etienne-sauzet-puligny-montrachet-1er-cru-les-referts/w/84464"
+    }
+  }
+}

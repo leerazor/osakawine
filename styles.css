@@ -365,6 +365,13 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
   font-size:.87rem;
 }
 
+.result-toggles {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:end;
+  gap:6px 12px;
+}
+
 .saved-only {
   font-size:.89rem;
   display:flex;
@@ -372,6 +379,10 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
   gap:6px;
   white-space:nowrap;
   cursor:pointer;
+}
+
+.saved-only[hidden] {
+  display:none;
 }
 
 .saved-only input {
@@ -487,8 +498,19 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
 
 .wine-actions {
   display:flex;
+  align-items:center;
   gap:5px;
   justify-content:flex-end;
+}
+
+.recommendation-badge {
+  color:var(--positive);
+  background:#eaf3ed;
+  border-radius:6px;
+  padding:4px 6px;
+  font-size:.76rem;
+  font-weight:700;
+  white-space:nowrap;
 }
 
 .wine-actions button {
