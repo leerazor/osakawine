@@ -414,6 +414,12 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
   min-width:0;
 }
 
+.prices .overseas-summary {
+  grid-column:1 / -1;
+  border-top:1px solid var(--line);
+  padding-top:5px;
+}
+
 .prices dt {
   font-size:.7rem;
   color:var(--muted);

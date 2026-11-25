@@ -6,9 +6,19 @@ const stockText = { available:'온라인 주문 가능', out:'온라인 품절',
 const allIds = new Map(wines.map(wine => [wine.id, wine]));
 const format = new Intl.NumberFormat('ko-KR');
 const usd = new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', minimumFractionDigits:0, maximumFractionDigits:2});
+const eur = new Intl.NumberFormat('en-US', {style:'currency', currency:'EUR', minimumFractionDigits:0, maximumFractionDigits:2});
 const collator = new Intl.Collator('ko');
-const fieldNames = ['search', 'country', 'region', 'vintage', 'volume', 'korea', 'wine-searcher', 'comparison', 'stock', 'min', 'max'];
+const fieldNames = ['search', 'country', 'region', 'vintage', 'volume', 'korea', 'wine-searcher', 'overseas-price', 'comparison', 'stock', 'min', 'max'];
 const koreanStores = {dailyshot:['데일리샷', 'dailyshot.co'], gooddeal:['굿딜와인', 'gooddealwine.store'], kihya:['키햐', 'm.kihya.com'], awine:['에이와인', 'awine.kr']};
+const overseasSources = {
+  century:['Century Liquor & Wines', 'ship.centuryliquorandwines.com'],
+  angry:['Angry Wine Merchant', 'angrywinemerchant.com'],
+  idealwine:['iDealwine', 'www.idealwine.com'],
+  winecom:['Wine.com', 'www.wine.com'],
+  gemini:['Gemini가 제시한 링크', 'www.wine-searcher.com']
+};
+const overseasKinds = {retail:'해외 판매가', pastRetail:'품절 상품의 이전 판매가', auctionEstimate:'경매 추정가', gemini:'Gemini 조회값 · 미검증'};
+const overseasReasons = {vintage:'출처 URL에서 해당 빈티지 확인 불가', source:'출처 링크의 보안·지역 조건 확인 불가'};
 const $ = id => document.getElementById(id);
 const filters = Object.fromEntries(fieldNames.map(name => [name, $(name)]));
 const pageSize = 40;
@@ -62,6 +72,7 @@ const searchKeys = new Map(wines.map(wine => [wine.id, [
 const asYen = yen => yen == null ? '—' : `¥${format.format(yen)}`;
 const asWon = won => won == null ? '—' : `${format.format(Math.round(won))}원`;
 const asUsd = amount => amount == null ? '—' : usd.format(amount);
+const asOverseasPrice = price => (price.currency === 'EUR' ? eur : usd).format(price.amount);
 function wineSearcherStatus(wine) {
   if (wine.type === 'set') return '세트 · 단품과 비교 불가';
   if (!wine.vintage && !wine.volume) return '빈티지·용량 미표기';
@@ -172,6 +183,8 @@ function applyFilters() {
     (!current.volume || (current.volume === 'large' ? wine.volume >= 1500 : wine.volume === Number(current.volume))) &&
     (!current.korea || koreaStatus(wine) === current.korea) &&
     (!current['wine-searcher'] || (wine.wineSearcherUsd == null ? 'missing' : 'available') === current['wine-searcher']) &&
+    (!current['overseas-price'] || wine.overseasPrices?.some(price =>
+      (price.kind === 'gemini' ? 'gemini' : 'external') === current['overseas-price'])) &&
     (!current.comparison || (wine.awine?.status || 'unmatched') === current.comparison) &&
     (!current.stock || (wine.onlineStock || 'unknown') === current.stock) &&
     (!current.min || (wine.yen != null && wine.yen >= Number(current.min))) &&
@@ -187,6 +200,11 @@ function originalNames(wine) {
   const japanese = `<p lang="ja">${escapeHTML(wine.jp)}</p>`;
   const english = wine.enName || wine.en;
   return `<div class="original-names">${japanese}${english ? `<p lang="en">${escapeHTML(english)}</p>` : ''}</div>`;
+}
+function overseasSummary(wine) {
+  const [price, ...others] = wine.overseasPrices ?? [];
+  if (!price) return '';
+  return `<div class="overseas-summary"><dt>${overseasKinds[price.kind]}</dt><dd>${asOverseasPrice(price)}${others.length ? `<small>외 ${others.length}건 · 상세에서 확인</small>` : ''}</dd></div>`;
 }
 function card(wine) {
   const purchase = koreaPurchase(wine);
@@ -205,7 +223,8 @@ function card(wine) {
   return `<article class="wine"><div><h3>${escapeHTML(main)}</h3>${originalNames(wine)}<p class="meta">${details.map(value => `<span>${escapeHTML(value)}</span>`).join('')}</p></div>
     <dl class="prices"><div><dt>타카무라 온라인가</dt><dd>${asYen(wine.yen)}<small>${won}</small></dd></div>
     <div><dt>${purchase ? '한국 구매가' : '한국 참고가'}${store ? ` · ${escapeHTML(store)}` : ''}</dt><dd>${asWon(korean?.price)}${hint}</dd></div>
-    <div><dt>와인서쳐 가격</dt><dd>${asUsd(wine.wineSearcherUsd)}<small>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : wineSearcherNote(wine)}</small></dd></div></dl>
+    <div><dt>와인서쳐 가격</dt><dd>${asUsd(wine.wineSearcherUsd)}<small>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : wineSearcherNote(wine)}</small></dd></div>
+    ${overseasSummary(wine)}</dl>
     <div class="wine-actions"><button class="secondary" type="button" data-detail="${wine.id}">상세</button><button class="secondary" type="button" data-save="${wine.id}" aria-pressed="${saved.has(wine.id)}">${saved.has(wine.id) ? '찜 해제' : '찜'}</button></div></article>`;
 }
 function render() {
@@ -242,6 +261,17 @@ function koreanDetails(wine) {
     ${saving}${offer.notes?.length ? `<p>${offer.notes.map(escapeHTML).join(' · ')}</p>` : ''}
     ${url ? `<p><a target="_blank" rel="noopener" href="${url}">${escapeHTML(seller)} 상품 ↗</a></p>` : ''}${conditional}`;
 }
+function overseasDetails(wine) {
+  if (!wine.overseasPrices?.length) return '';
+  const details = wine.overseasPrices.map(price => {
+    const [source, host] = overseasSources[price.source];
+    const url = itemLink(price.url, host);
+    const evidence = url ? `<a target="_blank" rel="noopener" href="${url}">${escapeHTML(source)} ↗</a>` : escapeHTML(source);
+    const reason = overseasReasons[price.reason];
+    return `<li><strong>${asOverseasPrice(price)}</strong> · ${overseasKinds[price.kind]} · ${evidence}${reason ? ` · ${reason}` : ''}</li>`;
+  });
+  return `<h3>해외 참고가</h3><p>${escapeHTML(meta.overseasPriceDate)} 조회</p><ul>${details.join('')}</ul>`;
+}
 function openDetails(wine) {
   activeId = wine.id;
   const product = itemLink(wine.url, 'takamuraplus.jp');
@@ -268,6 +298,7 @@ function openDetails(wine) {
     ${!koreaPurchase(wine) && !koreaReference(wine) ? '<h3>한국 가격</h3><p>조회한 판매처에서 비교할 상품 가격을 확인하지 못했습니다.</p>' : ''}
     <h3>와인서쳐 가격</h3><p>${wine.wineSearcherUsd == null ? wineSearcherStatus(wine) : `${asUsd(wine.wineSearcherUsd)} · 전 세계 세전 평균가 · ${wineSearcherNote(wine)} · 원문 미검증`}</p>
     ${wine.wineSearcherMatchedFrom ? `<p>같은 와인·빈티지·용량의 타카무라 상품번호 ${escapeHTML(wine.wineSearcherMatchedFrom)}에서 Gemini 참고값을 가져왔습니다.</p>` : ''}
+    ${overseasDetails(wine)}
     <h3>에이와인</h3>${matchInfo}${match?.notes.length ? `<p>참고가 · ${match.notes.map(escapeHTML).join(' · ')}</p>` : ''}
     ${match?.status === 'exact' && delta(wine) != null ? `<p>에이와인 대비 ${asWon(Math.abs(delta(wine)))} ${delta(wine) >= 0 ? '저렴' : '높음'}</p>` : ''}
     ${awine ? `<p><a target="_blank" rel="noopener" href="${awine}">에이와인 상품 ↗</a></p>` : ''}
